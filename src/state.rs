@@ -16,6 +16,7 @@ pub struct Constants {
 
 
 pub const ADMIN:  Item<Addr>  = Item::new("admin");
+pub const MAXHOLDBALANCE:  Item<u128>  = Item::new("max_hold_balance");
 pub const SHAREHOLDERS: Item<Vec<Addr>>=Item::new("shareholders");
 pub const AUTHORISEDCOUNTRIES:Item<Vec<u128>>=Item::new("authorised_countries");
 pub const FREEZEDACCOUNT :Map<&Addr,bool>=Map::new("freezed_account");

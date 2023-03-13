@@ -3,7 +3,7 @@ use cosmwasm_std::{
     to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response,Storage, to_vec, StdResult
 };
 use cosmwasm_storage::{PrefixedStorage, ReadonlyPrefixedStorage};
-use crate::state::{Constants,ADMIN,SHAREHOLDERS,AUTHORISEDCOUNTRIES,FREEZEDACCOUNT};
+use crate::state::{Constants,ADMIN,SHAREHOLDERS,AUTHORISEDCOUNTRIES,FREEZEDACCOUNT,MAXHOLDBALANCE};
 use crate::error::ContractError;
 
 pub const PREFIX_CONFIG: &[u8] = b"config";
@@ -51,6 +51,10 @@ pub fn instantiate(
     let authorisedcountries:Vec<_>=msg.authorised_countries.into_iter().map(|country_code|country_code).collect();
     SHAREHOLDERS.save(deps.storage, &shareholders?)?;
     AUTHORISEDCOUNTRIES.save(deps.storage, &authorisedcountries)?;
+    //MaxHoldBalance beside admin
+    let maxholdbal=msg.max_hold_balance;
+    MAXHOLDBALANCE.save(deps.storage, &maxholdbal)?;
+
     Ok(Response::default())
 }
 

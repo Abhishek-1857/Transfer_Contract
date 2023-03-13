@@ -17,7 +17,8 @@ pub struct InstantiateMsg{
     pub max_supply :u128,
     pub initial_balances: Vec<InitialBalance>,
     pub share_holders:Vec<String>,
-    pub authorised_countries:Vec<u128>   
+    pub authorised_countries:Vec<u128>,
+    pub max_hold_balance :u128  
     
 }
 
