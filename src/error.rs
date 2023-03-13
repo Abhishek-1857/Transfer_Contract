@@ -30,7 +30,10 @@ pub enum ContractError {
     #[error("You are not Admin, can't perform this action")]
     NotAdmin {},
 
-
     #[error("Cannot Remove from shareholders as (address {address}) has (balance {balance}) left")]
     CanNotRemove {address : Addr,balance : u128},
+
+
+    #[error("(address {address}) has reached maximum Holder balance , can't send more ")]
+    MaxHolderBalance {address : Addr},
 }

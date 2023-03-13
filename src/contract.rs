@@ -23,7 +23,7 @@ pub fn instantiate(
 ) -> Result<Response,ContractError> {
     let mut total_supply: u128 = 0;
     {
-        // Initial balances
+        // Initial balances,and freezeBalance
         for row in msg.initial_balances {
             let amount_raw = row.amount.u128();
             let freeze_amount_raw=row.freeze_amount.u128();
@@ -84,6 +84,7 @@ mod query {
 
     use super::*;
 
+    //To check balance of provided address 
     pub fn balanceof(deps:Deps,address:&String) -> Result<Binary,ContractError> {
         
         let address_key = deps.api.addr_validate(&address)?;
@@ -94,6 +95,7 @@ mod query {
         Ok(out)
     }
 
+    //To check frozen token balance of address
     pub fn frozenbalanceof(deps:Deps,address:&String) ->Result<Binary,ContractError>{
         let address_key = deps.api.addr_validate(&address)?;
         let balance = read_frozen_balance(deps.storage, &address_key)?;
@@ -103,6 +105,7 @@ mod query {
         Ok(out)
     }
 
+    //To get shareholders list
     pub fn shareholders(deps:Deps) ->Result<Binary,ContractError>{
         let shareholderdata=SHAREHOLDERS.load(deps.storage)?;
         let shareholders=get_shareholder(&shareholderdata);
@@ -148,6 +151,7 @@ mod execute{
     use cosmwasm_std::{Uint128, Addr, Event};
     use super::*;
 
+    //To freeze some amount of tokens
     pub fn freezetoken(deps:DepsMut,_env:Env,info:MessageInfo,amount:Uint128) ->Result<Response,ContractError>{
         let amount_raw=amount.u128();
         let mut accountbalance=read_balance(deps.storage, &info.sender)?;
@@ -166,6 +170,8 @@ mod execute{
     .add_event(Event::new("freeze_amount") .add_attribute("action", "freeze_amount")))
     }
 
+
+    //To unfreeze tokens
     pub fn unfreezetoken(deps:DepsMut,_env:Env,info:MessageInfo,amount:Uint128) ->Result<Response,ContractError>{
         let amount_raw=amount.u128();
         let mut accountbalance=read_balance(deps.storage, &info.sender)?;
@@ -183,43 +189,64 @@ mod execute{
         Ok(Response::new()
     .add_event(Event::new("unfreeze_amount") .add_attribute("action", "unfreeze_amount")))
     }
-
+  
+    //Transfer token and doing neccessary checks  
     pub fn transfer(deps:DepsMut,_env:Env,info:MessageInfo,reciever:String,amount:Uint128,countrycode:u128) ->Result<Response,ContractError>{
         let amount_raw=amount.u128();
         let country_code=countrycode;
         let authorised_countries=AUTHORISEDCOUNTRIES.load(deps.storage)?;
+        //Loading shareholders data
         let mut shareholders=SHAREHOLDERS.load(deps.storage)?;
+        //Getting if the account is able to transfer or freezed by admin
         let freezedaccount=FREEZEDACCOUNT.load(deps.storage, &info.sender)?;
+        //Getting maximum holder balance
+        let maxholdbalance=MAXHOLDBALANCE.load(deps.storage)?;
         let reciever_addr=deps.api.addr_validate(&reciever)?;
+        //Getting sender and reciever balances and freeze balance of sender
         let mut senderbalance=read_balance(deps.storage, &info.sender)?;
         let mut recieverbalance=read_balance(deps.storage, &reciever_addr)?;
         let  freeze_balance=read_frozen_balance(deps.storage, &info.sender)?;
 
-
+        //CHECKS
         if senderbalance<amount_raw{
             return Err(ContractError::InsufficientFunds { balance: senderbalance, required: amount_raw });
         }
+        //Checking if he have zero token left and only has freeze funds left(CAN'T TRANSFER)
         else if senderbalance==0 && freeze_balance>=amount_raw {
             return Err(ContractError::OnlyFeezeFundLeft { balance: freeze_balance });
         }
+        //Checking if the coutry code is authorised or not
         else if !authorised_countries.contains(&country_code) {
-            return Err(ContractError::UnauthorisedCountry { country_code: country_code });
+            return Err(ContractError::UnauthorisedCountry { country_code });
         }
+        //Checking if the account is frozen or not
         else if freezedaccount==true {
             return Err(ContractError::FreezedAccount {});
         }
         senderbalance-=amount_raw;
         recieverbalance+=amount_raw;
+
+        //Checking if the reciever balance is greater than the maximum holder balance after transfering if so then revert
+        if recieverbalance>maxholdbalance{
+            recieverbalance-=amount_raw;
+            let mut balance_store=PrefixedStorage::new(deps.storage, PREFIX_BALANCES);
+            balance_store.set(reciever_addr.as_str().as_bytes(), &recieverbalance.to_be_bytes());
+            return Err(ContractError::MaxHolderBalance { address: reciever_addr})?;
+        }
+        //Updating Balances of sender and reciever
         let mut balance_store=PrefixedStorage::new(deps.storage, PREFIX_BALANCES);
         balance_store.set(info.sender.as_str().as_bytes(), &senderbalance.to_be_bytes());   
         balance_store.set(reciever_addr.as_str().as_bytes(), &recieverbalance.to_be_bytes());
-
-        shareholders.push(reciever_addr);
+ 
+         //Pushing the sender into shareholders list
+         shareholders.push(reciever_addr);
         
         Ok(Response::new()
         .add_event(Event::new("transfer") .add_attribute("action", "transfer")))
     }
 
+
+     // To freeze account(Only be done by the admin)
     pub fn freeze_account(deps:DepsMut,_env:Env,_info:MessageInfo,account:String) ->Result<Response,ContractError>{
         let address=deps.api.addr_validate(&account)?;
         let  freeze_account_info=FREEZEDACCOUNT.load(deps.storage,&address)?;
@@ -247,7 +274,8 @@ mod execute{
             Ok(Response::new().add_event(Event::new("freeze_account")).add_attribute("action", "freeze_Account"))
         
     }
-
+    
+    //REmoving Shareholder(Only be done by Admin)
     pub fn remove_shareholder(deps:DepsMut,_env:Env,info:MessageInfo,account:String)->Result<Response,ContractError>{
         let admin=ADMIN.load(deps.storage)?;
         let address=deps.api.addr_validate(&account)?;
