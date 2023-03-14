@@ -1,15 +1,13 @@
-use serde::{Deserialize, Serialize,};
 use cosmwasm_std::Uint128;
-use schemars::JsonSchema;
+use  cosmwasm_schema::{cw_serde,QueryResponses};
 
-
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct InitialBalance {
     pub address: String,
     pub amount: Uint128,
     pub freeze_amount:Uint128
 }
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
+#[cw_serde]
 
 pub struct InstantiateMsg{
     pub name : String,
@@ -22,7 +20,7 @@ pub struct InstantiateMsg{
     
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
+#[cw_serde]
 pub enum ExecuteMsg{
     FreezeToken {amount :Uint128},
     UnfreezeToken {amount :Uint128},
@@ -31,25 +29,30 @@ pub enum ExecuteMsg{
     RemoveShareholder {account :String}
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
+#[cw_serde]
+#[derive(QueryResponses)]
+
 pub enum QueryMsg {
+    #[returns(BalanceResp)]
    Balance {address :String},
+   #[returns(FrozonBalanceResp)]
    FrozenBalance {address : String},
+   #[returns(ShareHoldersResp)]
    ShareHolders {}
    
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct BalanceResp {
     pub balance: Uint128,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct FrozonBalanceResp {
     pub frozonbalance: Uint128,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct ShareHoldersResp {
     pub shareholders: Vec<String>,
 }

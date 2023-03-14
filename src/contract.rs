@@ -116,7 +116,7 @@ mod query {
 
     }
 
-    fn get_shareholder(vec: &Vec<Addr>) -> Vec<String> {
+    pub fn get_shareholder(vec: &Vec<Addr>) -> Vec<String> {
         vec.iter()
             .map(|address| address.to_string())
             .collect()
@@ -148,6 +148,7 @@ mod query {
     }
 }
 mod execute{
+
     use cosmwasm_std::{Uint128, Addr, Event};
     use super::*;
 
@@ -198,7 +199,7 @@ mod execute{
         //Loading shareholders data
         let mut shareholders=SHAREHOLDERS.load(deps.storage)?;
         //Getting if the account is able to transfer or freezed by admin
-        let freezedaccount=FREEZEDACCOUNT.load(deps.storage, &info.sender)?;
+        let freezedaccount=FREEZEDACCOUNT.load(deps.storage, &info.sender).unwrap_or(false);
         //Getting maximum holder balance
         let maxholdbalance=MAXHOLDBALANCE.load(deps.storage)?;
         let reciever_addr=deps.api.addr_validate(&reciever)?;
@@ -249,7 +250,7 @@ mod execute{
      // To freeze account(Only be done by the admin)
     pub fn freeze_account(deps:DepsMut,_env:Env,_info:MessageInfo,account:String) ->Result<Response,ContractError>{
         let address=deps.api.addr_validate(&account)?;
-        let  freeze_account_info=FREEZEDACCOUNT.load(deps.storage,&address)?;
+        let  freeze_account_info=FREEZEDACCOUNT.load(deps.storage,&address).unwrap_or(false);
         let  admin = ADMIN.load(deps.storage)?;
         if admin!=_info.sender{
             return Err(ContractError::NotAdmin {});
@@ -269,13 +270,13 @@ mod execute{
         if freeze_account_info==true{
             return Err(ContractError::CanNotFreezeAccount {})?;
         }
-        
+        // freeze_account_info=true;
             FREEZEDACCOUNT.update(deps.storage, &address, value)?;
             Ok(Response::new().add_event(Event::new("freeze_account")).add_attribute("action", "freeze_Account"))
         
     }
     
-    //REmoving Shareholder(Only be done by Admin)
+    //Removing Shareholder(Only be done by Admin)
     pub fn remove_shareholder(deps:DepsMut,_env:Env,info:MessageInfo,account:String)->Result<Response,ContractError>{
         let admin=ADMIN.load(deps.storage)?;
         let address=deps.api.addr_validate(&account)?;
@@ -292,6 +293,7 @@ mod execute{
         Some(i) => Some(shareholders.remove(i)),
         None=>None,
        };
+       SHAREHOLDERS.save(deps.storage, &shareholders)?;
         
 
         Ok(Response::new().add_event(Event::new("remove_shareholder")).add_attribute("action", "remove_shareholder"))
@@ -325,4 +327,303 @@ mod execute{
     
 
     
+}
+
+
+#[cfg(test)]
+mod tests{
+    use super::*;
+    use crate::msg::InitialBalance;
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+    use cosmwasm_std::{from_slice, Addr, Env, MessageInfo, Storage, Timestamp, Uint128};
+    use cosmwasm_storage::ReadonlyPrefixedStorage;
+
+    fn mock_env_height(signer: &str, height: u64, time: u64) -> (Env, MessageInfo) {
+        let mut env = mock_env();
+        let info = mock_info(signer, &[]);
+        env.block.height = height;
+        env.block.time = Timestamp::from_seconds(time);
+        (env, info)
+    }
+
+    fn get_constants(storage: &dyn Storage) -> Constants {
+        let config_storage = ReadonlyPrefixedStorage::new(storage, PREFIX_CONFIG);
+        let data = config_storage
+            .get(KEY_CONSTANTS)
+            .expect("no config data stored");
+        from_slice(&data).expect("invalid data")
+    }
+
+    fn get_total_supply(storage: &dyn Storage) -> u128 {
+        let config_storage = ReadonlyPrefixedStorage::new(storage, PREFIX_CONFIG);
+        let data = config_storage
+            .get(KEY_TOTAL_SUPPLY)
+            .expect("no decimals data stored");
+        return query::bytes_to_u128(&data).unwrap();
+    }
+
+    fn get_balance(storage: &dyn Storage, address: &Addr) -> u128 {
+        let balances_storage = ReadonlyPrefixedStorage::new(storage, PREFIX_BALANCES);
+        return query::read_u128(&balances_storage, address).unwrap();
+    }
+
+    fn get_frozen_balance(storage: &dyn Storage, address: &Addr) -> u128 {
+        let frozen_balances_storage = ReadonlyPrefixedStorage::new(storage, PREFIX_FREEZE_AMOUNT);
+        return query::read_u128(&frozen_balances_storage, address).unwrap();
+    }
+
+    fn get_shareholder(storage: &dyn Storage) -> Result<Vec<String>,ContractError> {
+        let shareholder =   SHAREHOLDERS.load(storage)?;
+        return Ok(query::get_shareholder(&shareholder));
+    }
+
+
+    mod instantiate {
+        use super::*;
+        use crate::error::ContractError;
+
+        #[test]
+        fn works() {
+            let mut deps = mock_dependencies();
+            let instantiate_msg = InstantiateMsg {
+                name: "Provenance Token".to_string(),
+                symbol: "PRV".to_string(),
+                max_supply:1000000,
+                initial_balances: [InitialBalance {
+                    address: "creator".to_string(),
+                    amount: Uint128::from(11223344u128),
+                    freeze_amount:Uint128::from(100u128)
+                }]
+                .to_vec(),
+                share_holders: ["creator".to_string()].to_vec(),
+                authorised_countries:[91].to_vec(),
+                max_hold_balance: 10000,
+            };
+            let (env, info) = mock_env_height("creator", 450, 550);
+            let res = instantiate(deps.as_mut(), env, info, instantiate_msg).unwrap();
+            assert_eq!(0, res.messages.len());
+            assert_eq!(
+                get_constants(&deps.storage),
+                Constants {
+                    name: "Provenance Token".to_string(),
+                    symbol: "PRV".to_string(),
+                    max_supply: 1000000,
+                }
+            );
+            assert_eq!(
+                get_balance(&deps.storage, &Addr::unchecked("creator".to_string())),
+                11223344
+            );
+            assert_eq!(get_total_supply(&deps.storage), 11223344);
+            assert_eq!(get_frozen_balance(&deps.storage, &Addr::unchecked("creator".to_string())),100);
+            assert_eq!(get_shareholder(&deps.storage),Ok(["creator".to_string()].to_vec()));
+        }
+
+}
+
+mod transfer {
+    use super::*;
+    use crate::error::ContractError;
+    use cosmwasm_std::{attr, Event};
+
+    fn make_instantiate_msg() -> InstantiateMsg {
+        InstantiateMsg {
+            name: "Provenance Token".to_string(),
+            symbol: "PRV".to_string(),
+            max_supply:1000000,
+            initial_balances: [InitialBalance {
+                address: "creator".to_string(),
+                amount: Uint128::from(11223344u128),
+                freeze_amount:Uint128::from(100u128)
+            }]
+            .to_vec(),
+            share_holders: ["creator".to_string(),"creator2".to_string()].to_vec(),
+            authorised_countries:[91].to_vec(),
+            max_hold_balance: 10000,
+        }
+    }
+
+    #[test]
+    fn transfer_to_address() {
+        let mut deps = mock_dependencies();
+        let instantiate_msg = make_instantiate_msg();
+        let (env, info) = mock_env_height("creator", 450, 550);
+        let res = instantiate(deps.as_mut(), env, info, instantiate_msg).unwrap();
+        assert_eq!(0, res.messages.len());
+        // Initial state
+        assert_eq!(
+            get_balance(&deps.storage, &Addr::unchecked("creator".to_string())),
+            11223344
+        );
+        assert_eq!(
+            get_balance(&deps.storage, &Addr::unchecked("addr1111".to_string())),
+            0
+        );
+      
+        assert_eq!(get_total_supply(&deps.storage), 11223344);
+        // Transfer
+        let transfer_msg = ExecuteMsg::Transfer {
+            reciever: "addr1111".to_string(),
+            amount:Uint128::from(1u128),
+            countrycode: 91,
+        };
+        let (env, info) = mock_env_height("creator", 450, 550);
+        let transfer_result = execute(deps.as_mut(), env, info, transfer_msg).unwrap();
+        assert_eq!(transfer_result.messages.len(), 0);
+        let expected_event = Event::new("transfer")
+        .add_attribute("action","transfer");
+        
+
+    // Verify the response
+    assert_eq!(
+        transfer_result,
+        Response::new()
+            .add_event(expected_event.clone())
+    );
+
+    // Verify the emitted event
+    let events = transfer_result.events.clone();
+    assert_eq!(1, events.len()); // Ensure there is only one event emitted
+    assert_eq!(expected_event, events[0]); // Ensure the emitted event matches the expected event
+        // New state
+        assert_eq!(
+            get_balance(&deps.storage, &Addr::unchecked("creator".to_string())),
+            11223343
+        ); // -1
+        assert_eq!(
+            get_balance(&deps.storage, &Addr::unchecked("addr1111".to_string())),
+            1
+        ); // +1
+        
+        assert_eq!(get_total_supply(&deps.storage), 11223344);
+    }
+
+    #[test] 
+    fn freeze_token() {
+        let mut deps = mock_dependencies();
+        let instantiate_msg = make_instantiate_msg();
+        let (env, info) = mock_env_height("creator", 450, 550);
+        let res = instantiate(deps.as_mut(), env, info, instantiate_msg).unwrap();
+        assert_eq!(0, res.messages.len());
+        // Initial state
+        assert_eq!(
+            get_frozen_balance(&deps.storage, &Addr::unchecked("creator".to_string())),
+            100
+        );
+        
+        assert_eq!(get_total_supply(&deps.storage), 11223344);
+        // Transfer
+        let freeze_token_message = ExecuteMsg::FreezeToken {
+            amount:Uint128::from(1u128),
+        };
+        let (env, info) = mock_env_height("creator", 450, 550);
+        let freeze_token_result = execute(deps.as_mut(), env, info, freeze_token_message).unwrap();
+        assert_eq!(freeze_token_result.messages.len(), 0);
+        let expected_event = Event::new("freeze_amount")
+        .add_attribute("action","freeze_amount");
+        
+
+    // Verify the response
+    assert_eq!(
+        freeze_token_result,
+        Response::new()
+            .add_event(expected_event.clone())
+    );
+
+    // Verify the emitted event
+    let events = freeze_token_result.events.clone();
+    assert_eq!(1, events.len()); // Ensure there is only one event emitted
+    assert_eq!(expected_event, events[0]); // Ensure the emitted event matches the expected event
+        // New state
+        assert_eq!(
+            get_frozen_balance(&deps.storage, &Addr::unchecked("creator".to_string())),
+            101
+        ); // +1
+       
+        
+        assert_eq!(get_total_supply(&deps.storage), 11223344);
+    }
+
+    #[test] 
+    fn un_freeze_token() {
+        let mut deps = mock_dependencies();
+        let instantiate_msg = make_instantiate_msg();
+        let (env, info) = mock_env_height("creator", 450, 550);
+        let res = instantiate(deps.as_mut(), env, info, instantiate_msg).unwrap();
+        assert_eq!(0, res.messages.len());
+        // Initial state
+        assert_eq!(
+            get_frozen_balance(&deps.storage, &Addr::unchecked("creator".to_string())),
+            100
+        );
+        
+        assert_eq!(get_total_supply(&deps.storage), 11223344);
+        // Transfer
+        let unfreeze_token_message = ExecuteMsg::UnfreezeToken{
+            amount:Uint128::from(1u128),
+        };
+        let (env, info) = mock_env_height("creator", 450, 550);
+        let unfreeze_token_result = execute(deps.as_mut(), env, info, unfreeze_token_message).unwrap();
+        assert_eq!(unfreeze_token_result.messages.len(), 0);
+        let expected_event = Event::new("unfreeze_amount")
+        .add_attribute("action","unfreeze_amount");
+        
+
+    // Verify the response
+    assert_eq!(
+        unfreeze_token_result,
+        Response::new()
+            .add_event(expected_event.clone())
+    );
+
+    // Verify the emitted event
+    let events = unfreeze_token_result.events.clone();
+    assert_eq!(1, events.len()); // Ensure there is only one event emitted
+    assert_eq!(expected_event, events[0]); // Ensure the emitted event matches the expected event
+        // New state
+        assert_eq!(
+            get_frozen_balance(&deps.storage, &Addr::unchecked("creator".to_string())),
+            99
+        ); // -1
+       
+        
+        assert_eq!(get_total_supply(&deps.storage), 11223344);
+    }
+
+    #[test] 
+    fn remove_shareholder() {
+        let mut deps = mock_dependencies();
+        let instantiate_msg = make_instantiate_msg();
+        let (env, info) = mock_env_height("creator", 450, 550);
+        let res = instantiate(deps.as_mut(), env, info, instantiate_msg).unwrap();
+        assert_eq!(0, res.messages.len());
+        // Initial state
+        assert_eq!(get_shareholder(&deps.storage),Ok(["creator".to_string(),"creator2".to_string()].to_vec()));
+        
+        // Transfer
+        let remove_shareholder_message = ExecuteMsg::RemoveShareholder{
+           account:"creator2".to_string(),
+        };
+        let (env, info) = mock_env_height("creator", 450, 550);
+        let remove_shareholder_result = execute(deps.as_mut(), env, info, remove_shareholder_message).unwrap();
+        assert_eq!(remove_shareholder_result.messages.len(), 0);
+    //     let expected_event = Event::new("remove_shareholder")
+    //     .add_attribute("action","remove_shareholder");
+    // // Verify the response
+    // assert_eq!(
+    //     remove_shareholder_result,
+    //     Response::new()
+    //         .add_event(expected_event.clone())
+    // );
+    // // Verify the emitted event
+    // let events = remove_shareholder_result.events.clone();
+    // assert_eq!(1, events.len()); // Ensure there is only one event emitted
+    // assert_eq!(expected_event, events[0]); // Ensure the emitted event matches the expected event
+        // New state
+        assert_eq!(get_shareholder(&deps.storage),Ok(["creator".to_string()].to_vec()));
+    }
+
+    
+}
+
 }
