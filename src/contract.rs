@@ -324,7 +324,12 @@ mod execute{
         read_u128(&frozen_balance_store, owner)
     }
 
-    
+
+    pub fn get_shareholder(vec: &Vec<Addr>) -> Vec<String> {
+        vec.iter()
+            .map(|address| address.to_string())
+            .collect()
+    }    
 
     
 }
@@ -359,29 +364,27 @@ mod tests{
         let data = config_storage
             .get(KEY_TOTAL_SUPPLY)
             .expect("no decimals data stored");
-        return query::bytes_to_u128(&data).unwrap();
+        return execute::bytes_to_u128(&data).unwrap();
     }
 
     fn get_balance(storage: &dyn Storage, address: &Addr) -> u128 {
         let balances_storage = ReadonlyPrefixedStorage::new(storage, PREFIX_BALANCES);
-        return query::read_u128(&balances_storage, address).unwrap();
+        return execute::read_u128(&balances_storage, address).unwrap();
     }
 
     fn get_frozen_balance(storage: &dyn Storage, address: &Addr) -> u128 {
         let frozen_balances_storage = ReadonlyPrefixedStorage::new(storage, PREFIX_FREEZE_AMOUNT);
-        return query::read_u128(&frozen_balances_storage, address).unwrap();
+        return execute::read_u128(&frozen_balances_storage, address).unwrap();
     }
 
     fn get_shareholder(storage: &dyn Storage) -> Result<Vec<String>,ContractError> {
         let shareholder =   SHAREHOLDERS.load(storage)?;
-        return Ok(query::get_shareholder(&shareholder));
+        return Ok(execute::get_shareholder(&shareholder));
     }
 
 
     mod instantiate {
         use super::*;
-        use crate::error::ContractError;
-
         #[test]
         fn works() {
             let mut deps = mock_dependencies();
@@ -423,8 +426,7 @@ mod tests{
 
 mod transfer {
     use super::*;
-    use crate::error::ContractError;
-    use cosmwasm_std::{attr, Event};
+    use cosmwasm_std::Event;
 
     fn make_instantiate_msg() -> InstantiateMsg {
         InstantiateMsg {
@@ -497,6 +499,8 @@ mod transfer {
         
         assert_eq!(get_total_supply(&deps.storage), 11223344);
     }
+
+
 
     #[test] 
     fn freeze_token() {
@@ -621,9 +625,43 @@ mod transfer {
     // assert_eq!(expected_event, events[0]); // Ensure the emitted event matches the expected event
         // New state
         assert_eq!(get_shareholder(&deps.storage),Ok(["creator".to_string()].to_vec()));
+    }  
+}
+mod query {
+    use super::*;
+    use cosmwasm_std::{attr, Addr};
+
+
+    fn make_instantiate_msg() -> InstantiateMsg {
+        InstantiateMsg {
+            name: "Provenance Token".to_string(),
+            symbol: "PRV".to_string(),
+            max_supply:1000000,
+            initial_balances: [InitialBalance {
+                address: "creator".to_string(),
+                amount: Uint128::from(11223344u128),
+                freeze_amount:Uint128::from(100u128)
+            }]
+            .to_vec(),
+            share_holders: ["creator".to_string(),"creator2".to_string()].to_vec(),
+            authorised_countries:[91].to_vec(),
+            max_hold_balance: 10000,
+        }
     }
 
-    
-}
+    #[test]
+    fn can_query_balance_of_existing_address() {
+        let mut deps = mock_dependencies();
+        let instantiate_msg = make_instantiate_msg();
+        let (env, info) = mock_env_height("creator", 450, 550);
+        let res = instantiate(deps.as_mut(), env.clone(), info, instantiate_msg).unwrap();
+        assert_eq!(0, res.messages.len());
+        let query_msg = QueryMsg::Balance {
+            address: "creator".to_string(),
+        };
+        let query_result = query(deps.as_ref(), env, query_msg).unwrap();
+        assert_eq!(query_result.as_slice(), b"{\"balance\":\"11223344\"}");
+    }
 
+}
 }
