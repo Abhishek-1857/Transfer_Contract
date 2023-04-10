@@ -26,9 +26,9 @@ const {
 
 const rpcUrl = 'https://rpc.test.provenance.io:443';
 
-const contract_address="tp15yldac6g05cuy0yc5grhtfuvw24vlhttp362ww0yuk3g0pt7lvss4822je"
+const contract_address="tp1h82y6m2rhmf7plggdt3smaxj3cth5ffu9dg7fpenxxjzpkjlzc4se0zz59"
 const address1="tp17kjvwvfjdf3j9knr72rewx94scqjgjf3gmz7tx"
-const address2="tp1svpk6xpnyef6vxn7cvcs6mcghwmh3gpy0yy37q"
+const address2="tp1ua9fz57n0upam2l40ydj7vn46v8snpfgxyffj9"
 
 const main = async () => {
   const client = await SigningCosmWasmClient.connect(rpcUrl);
@@ -38,8 +38,9 @@ const main = async () => {
     await client.queryContractSmart(
       contract_address,
       {
-        balance: { address: address1 },
-      }
+        share_holders: {},
+       
+      },
     )
   );
   console.log(
@@ -47,7 +48,7 @@ const main = async () => {
     await client.queryContractSmart(
       contract_address,
       {
-        balance: { address: address2 },
+        frozen_balance: { address: "tp17kjvwvfjdf3j9knr72rewx94scqjgjf3gmz7tx" },
       }
     )
   );

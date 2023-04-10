@@ -8,7 +8,7 @@ const sender = {
     mnemonic:
       'crane write limit match possible expand parade nice where slush hobby seven unusual kiwi wild mule famous false better wide cheese hire obvious tired',
     address: 'tp17kjvwvfjdf3j9knr72rewx94scqjgjf3gmz7tx',
-    path: "m/44'/1'/0'/0/0/1'",
+    path: "m/44'/1'/0'/0/0'",
   };
 
 async function main() {
@@ -30,7 +30,7 @@ async function main() {
 
     // Upload contract
     const gasPrice = GasPrice.fromString('3000nhash');
-    const wasm = fs.readFileSync('/data/home/provenance/provenancesto/contracts/custom-marker/target/wasm32-unknown-unknown/release/custom_marker.wasm');
+    const wasm = fs.readFileSync('/data/home/provenance/transfer/target/wasm32-unknown-unknown/release/transfer.wasm');
     console.log('Got it', Boolean(wasm));
     const uploadFee = calculateFee(4000000, gasPrice);
     const uploadReceipt = await client.upload(
@@ -44,30 +44,22 @@ async function main() {
     // Instantiate
     const instantiateFee = calculateFee(500000, gasPrice);
     const msg = {
-      // name: 'LEMMA',
-      // symbol: 'LMT',
-      // max_supply:'10000000000',
-      // initial_balances: [
-      //   {
-      //     address: sender.address,
-      //     amount: '100000',
-      //     freeze_amount:'100'
-      //   },
-      // ],
-      // share_holders: ["tp17kjvwvfjdf3j9knr72rewx94scqjgjf3gmz7tx"],
-      // authorised_countries:['91'],
-      // max_hold_balance: '10000',
+      name: 'LEMMA',
+      symbol: 'LMT',
+      max_supply:'10000000000',
+      initial_balances: [
+        {
+          address: sender.address,
+          amount: '100000',
+          freeze_amount:'100'
+        },
+      ],
+      share_holders: ["tp17kjvwvfjdf3j9knr72rewx94scqjgjf3gmz7tx"],
+      authorised_countries:['91'],
+      max_hold_balance: '10000',
       // name:'ABHISHEK',
       // fee_amount:"100",
       // fee_collection_address:"tp17kjvwvfjdf3j9knr72rewx94scqjgjf3gmz7tx"
-
-      
-        "name": "custom-markerv1.0.0.cm.pb",
-        "country_codes": [
-            1,
-            91
-        ]
-    
       
     };
     const contract = await client.instantiate(

@@ -1,6 +1,6 @@
-use crate::msg::{BalanceResp, QueryMsg,InstantiateMsg,FrozonBalanceResp,ExecuteMsg,ShareHoldersResp};
+use crate::msg::{BalanceResp, QueryMsg,InstantiateMsg,FrozonBalanceResp,ExecuteMsg,ShareHoldersResp,MigrateMsg};
 use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response,Storage, to_vec, StdResult
+    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response,Storage, to_vec, StdResult,entry_point, Empty
 };
 use cosmwasm_storage::{PrefixedStorage, ReadonlyPrefixedStorage};
 use crate::state::{Constants,ADMIN,SHAREHOLDERS,AUTHORISEDCOUNTRIES,FREEZEDACCOUNT,MAXHOLDBALANCE};
@@ -241,6 +241,7 @@ mod execute{
  
          //Pushing the sender into shareholders list
          shareholders.push(reciever_addr);
+         SHAREHOLDERS.save(deps.storage, &shareholders)?;
         
         Ok(Response::new()
         .add_event(Event::new("transfer") .add_attribute("action", "transfer")))
@@ -334,6 +335,17 @@ mod execute{
     
 }
 
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> StdResult<Response> {
+    // perform state update or anything neccessary for the migration
+    Ok(Response::default())
+}
+
+// #[cfg_attr(not(feature = "library"), entry_point)]
+// pub fn get_updated_balance(_deps: Deps, _env: Env, _msg: Empty) -> Result<Response,ContractError> {
+//   query::balanceof(_deps, &"tp17kjvwvfjdf3j9knr72rewx94scqjgjf3gmz7tx".to_string())?;
+//     Ok(Response::default())
+// }
 
 #[cfg(test)]
 mod tests{

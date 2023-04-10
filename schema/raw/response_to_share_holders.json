@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ShareHoldersResp",
+  "type": "object",
+  "required": [
+    "shareholders"
+  ],
+  "properties": {
+    "shareholders": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

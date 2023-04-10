@@ -10,14 +10,21 @@ const sender = {
     address: 'tp17kjvwvfjdf3j9knr72rewx94scqjgjf3gmz7tx',
     path: "m/44'/1'/0'/0/0'",
   };
-const contract_address="tp15yldac6g05cuy0yc5grhtfuvw24vlhttp362ww0yuk3g0pt7lvss4822je"
+  const sender2 = {
+    mnemonic:
+      'brass eye desert inflict note focus ladder alcohol illness bless width exhibit faculty jelly flee estate disease sick typical chief type truth puppy kick',
+    address: 'tp1ua9fz57n0upam2l40ydj7vn46v8snpfgxyffj9',
+    path: "m/44'/1'/0'/0/0'",
+  };
+const contract_address="tp1ysyf7ypd2vfn74a8d4dfexmqcy4xu9zu30jxj6pu0r94f88ehe3sgegp5l"
 
 async function main() {
-  const recipient = 'tp1svpk6xpnyef6vxn7cvcs6mcghwmh3gpy0yy37q';
-
+  const recipient = 'tp1ua9fz57n0upam2l40ydj7vn46v8snpfgxyffj9';
+console.log("Herrrrrrrrrrrreeeeeeeeeee")
   const wallet = await DirectSecp256k1HdWallet.fromMnemonic(sender.mnemonic, {
     prefix: 'tp',
   });
+  console.log("Herrrrrrrrrrrreeeeeeeeeee")
 
   const rpcEndpoint = 'https://rpc.test.provenance.io:443';
   const client = await SigningCosmWasmClient.connectWithSigner(
@@ -25,6 +32,7 @@ async function main() {
     wallet,
     { prefix: 'tp', gasPrice: '3000nhash' }
   );
+  console.log("Herrrrrrrrrrrreeeeeeeeeee")
 
 
 
@@ -32,16 +40,25 @@ async function main() {
 
   const gasPrice = GasPrice.fromString('3000nhash');
   const executeFee = calculateFee(4000000, gasPrice);
+  console.log("Herrrrrrrrrrrreeeeeeeeeee")
+
   const result = await client.execute(
     sender.address,
     contract_address,
     {
-      transfer: {
-        reciever:recipient,
-         amount: "100",
-         countrycode:"91"
+      // transfer: {
+      //   reciever:recipient,
+      //    amount: "100",
+      //    countrycode:"91"
 
-      },
+      // },
+      // remove_shareholder: {
+      //   account:recipient,
+      // },
+      "create": {
+        "supply": "100000",
+        "denom": "RCustomMarker"
+    }
     },
     executeFee
   );

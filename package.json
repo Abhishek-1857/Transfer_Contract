@@ -17,10 +17,12 @@
   },
   "homepage": "https://github.com/Abhishek-1857/Transfer_Contract#readme",
   "dependencies": {
+    "@cosmjs/cosmwasm": "^0.25.6",
     "@cosmjs/cosmwasm-stargate": "^0.30.0",
     "@cosmjs/crypto": "^0.30.0",
     "@cosmjs/encoding": "^0.30.0",
     "@cosmjs/proto-signing": "^0.30.0",
-    "@cosmjs/stargate": "^0.30.0"
+    "@cosmjs/stargate": "^0.30.0",
+    "fs": "0.0.1-security"
   }
 }

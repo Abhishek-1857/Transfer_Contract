@@ -26,7 +26,8 @@ pub enum ExecuteMsg{
     UnfreezeToken {amount :Uint128},
     Transfer {reciever:String,amount:Uint128,countrycode:u128},
     FreezeAccount {account :String},
-    RemoveShareholder {account :String}
+    RemoveShareholder {account :String},
+    
 }
 
 #[cw_serde]
@@ -56,7 +57,8 @@ pub struct FrozonBalanceResp {
 pub struct ShareHoldersResp {
     pub shareholders: Vec<String>,
 }
-
+#[cw_serde]
+pub struct MigrateMsg{}
 
 
 
