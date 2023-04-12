@@ -1,3 +1,11 @@
 /target
 /Cargo.lock
 /node_modules
+/build/build
+/build/provnode
+/build/approve_result.json
+/build/blockchain_process.pid
+/build/contract_info.json
+/build/create_result.json
+/build/mint_result.json
+/build/wasm_storeInfo.json

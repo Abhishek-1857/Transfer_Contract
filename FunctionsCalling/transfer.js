@@ -16,7 +16,7 @@ const sender = {
     address: 'tp1ua9fz57n0upam2l40ydj7vn46v8snpfgxyffj9',
     path: "m/44'/1'/0'/0/0'",
   };
-const contract_address="tp1ysyf7ypd2vfn74a8d4dfexmqcy4xu9zu30jxj6pu0r94f88ehe3sgegp5l"
+const contract_address="tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8"
 
 async function main() {
   const recipient = 'tp1ua9fz57n0upam2l40ydj7vn46v8snpfgxyffj9';
